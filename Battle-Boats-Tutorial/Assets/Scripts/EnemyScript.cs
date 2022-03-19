@@ -73,9 +73,9 @@ public class EnemyScript : MonoBehaviour
         return enemyShips;
     }
 
-    public void NPCTurn()
+    public void NPCTurn(int guess)
     {
-        List<int> hitIndex = new List<int>();
+        /*List<int> hitIndex = new List<int>();
         for(int i = 0; i < guessGrid.Length; i++)
         {
             if (guessGrid[i] == 'h') hitIndex.Add(i);
@@ -119,7 +119,8 @@ public class EnemyScript : MonoBehaviour
             nextIndex = GuessAgainCheck(nextIndex);
             Debug.Log(" -########-- ");
             guess = nextIndex;
-        }
+        }*/
+
         GameObject tile = GameObject.Find("Tile (" + (guess + 1) + ")");
         guessGrid[guess] = 'm';
         Vector3 vec = tile.transform.position;
@@ -163,6 +164,9 @@ public class EnemyScript : MonoBehaviour
         gameManager.GetComponent<GameManager>().EndEnemyTurn();
     }
 
+    private int MISS = 0;
+    private int HIT = 1;
+    private int SUNK = 2;
     public void PauseAndEnd(int miss)
     {
         if(currentHits.Count > 0 && currentHits[0] > miss)
@@ -178,6 +182,9 @@ public class EnemyScript : MonoBehaviour
                 }
             }
         }
+
+        //UDP
+        gameManager.setHitMissBytes(MISS);
         Invoke("EndTurn", 1.0f);
     }
 }

@@ -45,14 +45,108 @@ public class GameManager : MonoBehaviour
     [SerializeField] GameObject rightHand;
 
 
+    //UDP
+    private UDP udp;
+    private static int BYTE_ARRAY_LENGTH = 4;
+    private byte[] sendData = new byte[BYTE_ARRAY_LENGTH];
+    private byte[] receiveDat = new byte[BYTE_ARRAY_LENGTH];
+
+    private byte msgTypeByte;
+    private byte gamePhaseByte;
+    private byte hitMissByte;
+    private byte tileByte;
+
+    private int GUESS = 0;
+    private int INFO = 1;
+
+    private int MISS = 0;
+    private int HIT = 1;
+    private int SUNK = 2;
+
+    private int PHYSICAL_WINS = 0;
+    private int VR_WINS = 1;
+
+    private int msgTypeInt;
+    private int gamePhaseInt;
+    private int hitMissInt;
+    private int tileInt;
+
+    private GameObject guessedTile;
+    private void Update()
+    {
+        if (setupComplete)
+        {
+            if (udp.clientAvailable())
+            {
+                if (!playerTurn)
+                {
+                    //wait for incoming data
+                    do
+                    {
+                        receiveDat = udp.receiveData();
+                    } while (receiveDat.Length < BYTE_ARRAY_LENGTH);
+
+                    decodBytes(receiveDat);
+                    visualizeGuessResult();
+                }
+                else
+                {
+                    //Need to receive enemy guess and return info
+                    do
+                    {
+                        receiveDat = udp.receiveData();
+                    } while (receiveDat.Length < BYTE_ARRAY_LENGTH);
+                    decodBytes(receiveDat);
+                    enemyScript.NPCTurn(tileInt);
+
+                }
+            }
+            
+        }
+
+    }
+
+    private void visualizeGuessResult()
+    {
+        var tile = guessedTile;
+        if(hitMissInt == MISS)
+        {
+            tile.GetComponent<TileScript>().SetTileColor(1, new Color32(38, 57, 76, 255));
+            tile.GetComponent<TileScript>().SwitchColors(1);
+            topText.text = "Missed, there is no ship there.";
+        }
+        else if(hitMissInt == HIT)
+        {
+            topText.text = "HIT!!";
+            tile.GetComponent<TileScript>().SetTileColor(1, new Color32(255, 0, 0, 255));
+            tile.GetComponent<TileScript>().SwitchColors(1);
+        }
+        else if(hitMissInt == SUNK)
+        {
+            enemyShipCount--;
+            topText.text = "SUNK!!!!!!";
+            enemyFires.Add(Instantiate(firePrefab, tile.transform.position, Quaternion.identity));
+            tile.GetComponent<TileScript>().SetTileColor(1, new Color32(68, 0, 0, 255));
+            tile.GetComponent<TileScript>().SwitchColors(1);
+        }
+     
+    }
+
+    
+
     // Start is called before the first frame update
     void Start()
     {
+        this.udp = GetComponent<UDP>();
+
         shipScript = ships[shipIndex].GetComponent<ShipScript>();
         nextBtn.onClick.AddListener(() => NextShipClicked());
         rotateBtn.onClick.AddListener(() => RotateClicked());
         replayBtn.onClick.AddListener(() => ReplayClicked());
-        enemyShips = enemyScript.PlaceEnemyShips();
+
+
+        //TODO take out completely and wait for knowledge of hit or miss
+        //enemyShips = enemyScript.PlaceEnemyShips();
     }
 
     void OnActivate()
@@ -133,8 +227,9 @@ public class GameManager : MonoBehaviour
 
     public void CheckHit(GameObject tile)
     {
+        guessedTile = tile;
         int tileNum = Int32.Parse(Regex.Match(tile.name, @"\d+").Value);
-        int hitCount = 0;
+        /*int hitCount = 0;
         foreach(int[] tileNumArray in enemyShips)
         {
             if (tileNumArray.Contains(tileNum))
@@ -158,12 +253,18 @@ public class GameManager : MonoBehaviour
                     enemyFires.Add(Instantiate(firePrefab, tile.transform.position, Quaternion.identity));
                     tile.GetComponent<TileScript>().SetTileColor(1, new Color32(68, 0, 0, 255));
                     tile.GetComponent<TileScript>().SwitchColors(1);
+
+                    //UDP
+                    hitMissByte = Convert.ToByte(SUNK);
                 }
                 else
                 {
                     topText.text = "HIT!!";
                     tile.GetComponent<TileScript>().SetTileColor(1, new Color32(255, 0, 0, 255));
                     tile.GetComponent<TileScript>().SwitchColors(1);
+
+                    //UDP
+                    hitMissByte = Convert.ToByte(HIT);
                 }
                 break;
             }
@@ -174,7 +275,17 @@ public class GameManager : MonoBehaviour
             tile.GetComponent<TileScript>().SetTileColor(1, new Color32(38, 57, 76, 255));
             tile.GetComponent<TileScript>().SwitchColors(1);
             topText.text = "Missed, there is no ship there.";
-        }
+
+            //UDP
+            hitMissByte = Convert.ToByte(MISS);
+
+        }*/
+
+        //UDP
+        msgTypeByte = Convert.ToByte(GUESS);
+        tileByte = Convert.ToByte(tileNum);
+        
+
         Invoke("EndPlayerTurn", 1.0f);
     }
 
@@ -185,11 +296,19 @@ public class GameManager : MonoBehaviour
         playerFires.Add(Instantiate(firePrefab, tile, Quaternion.identity));
         if (hitObj.GetComponent<ShipScript>().HitCheckSank())
         {
+            //UDP sunk
+            hitMissByte = Convert.ToByte(SUNK);
+
             playerShipCount--;
             playerShipText.text = playerShipCount.ToString();
             enemyScript.SunkPlayer();
         }
+
+        //UDP hit
+        hitMissByte = Convert.ToByte(HIT);
        Invoke("EndEnemyTurn", 2.0f);
+
+        //TODO update info
     }
 
     private void EndPlayerTurn()
@@ -199,9 +318,35 @@ public class GameManager : MonoBehaviour
         foreach (GameObject fire in enemyFires) fire.SetActive(false);
         enemyShipText.text = enemyShipCount.ToString();
         topText.text = "Enemy's turn";
-        enemyScript.NPCTurn();
+        
+        //Send Guess to P2
+        sendData = encodeBytes();
+        udp.sendData(sendData);
+
+/*//Player 2 visualizes guess + makes their move
+
+        //Receive info from P2 on their guess
+        receiveDat = udp.receiveData();
+        decodBytes(receiveDat);
+        if(gamePhaseInt == PHYSICAL_WINS)
+        {
+            GameOver("ENEMEY WINs!!!");
+        }
+
+        //Takes the tile you are targeting: 0 is bottom left, count up to the right 
+        enemyScript.NPCTurn(tileInt);*/
+
+
         ColorAllTiles(0);
-        if (playerShipCount < 1) GameOver("ENEMY WINs!!!");
+        if (playerShipCount < 1)
+        {
+            GameOver("ENEMY WINs!!!");
+
+            //UDP
+            gamePhaseByte = Convert.ToByte(PHYSICAL_WINS);
+        }
+        playerTurn = false;
+
     }
 
     public void EndEnemyTurn()
@@ -213,7 +358,17 @@ public class GameManager : MonoBehaviour
         topText.text = "Select a tile";
         playerTurn = true;
         ColorAllTiles(1);
-        if (enemyShipCount < 1) GameOver("YOU WIN!!");
+        if (enemyShipCount < 1)
+        {
+            GameOver("YOU WIN!!");
+
+            //UDP
+            gamePhaseByte = Convert.ToByte(VR_WINS);
+        }
+
+        //UDP
+        udp.sendData(encodeBytes());
+        //playerTurn flag flipped so clicking on next tile starts the player turn 
     }
 
     private void ColorAllTiles(int colorIndex)
@@ -229,6 +384,8 @@ public class GameManager : MonoBehaviour
         topText.text = "Game Over: " + winner;
         replayBtn.gameObject.SetActive(true);
         playerTurn = false;
+
+        //TODO update data
     }
 
     void ReplayClicked()
@@ -236,5 +393,26 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
+    private byte[] encodeBytes()
+    {
+        byte[] data = new byte[BYTE_ARRAY_LENGTH];
+        data[0] = msgTypeByte;
+        data[1] = gamePhaseByte;
+        data[2] = hitMissByte;
+        data[3] = tileByte;
+        return data;
+    }
 
+    private void decodBytes(byte[] input)
+    {
+        msgTypeInt = Convert.ToInt32(input[0]);
+        gamePhaseInt = Convert.ToInt32(input[1]);
+        hitMissInt = Convert.ToInt32(input[2]);
+        tileInt = Convert.ToInt32(input[3]);
+    }
+
+    public void setHitMissBytes(int status)
+    {
+        hitMissByte = Convert.ToByte(status);
+    }
 }

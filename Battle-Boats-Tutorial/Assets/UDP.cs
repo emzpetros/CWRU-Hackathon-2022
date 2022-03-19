@@ -52,6 +52,35 @@ public class UDP : MonoBehaviour
 
     }
 
+    public void sendData(byte[] sendBytes)
+    {
+        client.Send(sendBytes, sendBytes.Length);
+    }
+
+    public byte[] receiveData()
+    {
+        if (client.Available > 0)
+        {
+            IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 8888);
+            byte[] receiveBytes = client.Receive(ref remoteEndPoint);
+            
+            //directly index array
+            string receivedString = Encoding.ASCII.GetString(receiveBytes);
+            print("Message received from the server " + receivedString);
+            return receiveBytes;
+        }
+        else
+        {
+            //empty array 
+            return new byte[0];
+        }
+    }
+
+    public bool clientAvailable()
+    {
+        return client.Available > 0;
+    }
+
 
 
 }
