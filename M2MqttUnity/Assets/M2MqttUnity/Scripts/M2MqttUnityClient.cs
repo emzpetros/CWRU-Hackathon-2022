@@ -46,7 +46,7 @@ namespace M2MqttUnity
         [Tooltip("Port where the broker accepts connections")]
         public int brokerPort = 1883;
         [Tooltip("Use encrypted connection")]
-        public bool isEncrypted = false;
+        public bool isEncrypted = true;
         [Header("Connection parameters")]
         [Tooltip("Connection to the broker is delayed by the the given milliseconds")]
         public int connectionDelay = 500;
@@ -278,9 +278,14 @@ namespace M2MqttUnity
 #if (!UNITY_EDITOR && UNITY_WSA_10_0 && !ENABLE_IL2CPP)
                     client = new MqttClient(brokerAddress,brokerPort,isEncrypted, isEncrypted ? MqttSslProtocols.SSLv3 : MqttSslProtocols.None);
 #else
-                    client = new MqttClient(brokerAddress, brokerPort, isEncrypted, null, null, isEncrypted ? MqttSslProtocols.SSLv3 : MqttSslProtocols.None);
-                    //System.Security.Cryptography.X509Certificates.X509Certificate cert = new System.Security.Cryptography.X509Certificates.X509Certificate();
-                    //client = new MqttClient(brokerAddress, brokerPort, isEncrypted, cert, null, MqttSslProtocols.TLSv1_0, MyRemoteCertificateValidationCallback);
+
+                    //client = new MqttClient(brokerAddress, brokerPort, isEncrypted, null, null, isEncrypted ? MqttSslProtocols.SSLv3 : MqttSslProtocols.None);
+
+                    System.Security.Cryptography.X509Certificates.X509Certificate certCa = new System.Security.Cryptography.X509Certificates.X509Certificate("Assets/AmazonRootCA1.pem");
+                    System.Security.Cryptography.X509Certificates.X509Certificate certClient = new System.Security.Cryptography.X509Certificates.X509Certificate("Assets/bd206f30159bca818eea208eed59526dbcbe05fc7d92c6c34d248a07dc19bf46-certificate.pem.crt");
+                    print(certCa.GetName());
+                    print(certClient.GetName());
+                    client = new MqttClient(brokerAddress, brokerPort, isEncrypted, certCa, certClient, MqttSslProtocols.SSLv3);//, MyRemoteCertificateValidationCallback);
 #endif
                 }
                 catch (Exception e)

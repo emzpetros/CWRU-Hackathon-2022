@@ -1,9 +1,11 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.XR.Interaction.Toolkit;
 
 public class TileScript : MonoBehaviour
 {
+    [SerializeField] GameObject rightHand;
     GameManager gameManager;
     Ray ray;
     RaycastHit hit;
@@ -20,7 +22,12 @@ public class TileScript : MonoBehaviour
 
     void Update()
     {
-        ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if(rightHand.GetComponent<XRRayInteractor>().TryGetCurrent3DRaycastHit(out hit))
+        {
+            
+        }
+        
+        /*ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         if(Physics.Raycast(ray, out hit))
         {
             if(Input.GetMouseButtonDown(0) && hit.collider.gameObject.name == gameObject.name)
@@ -30,7 +37,7 @@ public class TileScript : MonoBehaviour
                     gameManager.TileClicked(hit.collider.gameObject);
                 }
             }
-        }
+        }*/
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -55,5 +62,17 @@ public class TileScript : MonoBehaviour
     public void SwitchColors(int colorIndex)
     {
         GetComponent<Renderer>().material.color = hitColor[colorIndex];
+    }
+
+    void OnActivate()
+    {
+        if (rightHand.GetComponent<XRRayInteractor>().TryGetCurrent3DRaycastHit(out hit) && hit.collider.gameObject.name == gameObject.name)
+        {
+            if (missileHit == false)
+            {
+                gameManager.TileClicked(hit.collider.gameObject);
+            }
+
+        }
     }
 }

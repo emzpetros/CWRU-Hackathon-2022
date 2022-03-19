@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.XR.Interaction.Toolkit;
 
 public class GameManager : MonoBehaviour
 {
@@ -40,6 +41,9 @@ public class GameManager : MonoBehaviour
     private int enemyShipCount = 5;
     private int playerShipCount = 5;
 
+    [Header("VR")]
+    [SerializeField] GameObject rightHand;
+
 
     // Start is called before the first frame update
     void Start()
@@ -49,6 +53,28 @@ public class GameManager : MonoBehaviour
         rotateBtn.onClick.AddListener(() => RotateClicked());
         replayBtn.onClick.AddListener(() => ReplayClicked());
         enemyShips = enemyScript.PlaceEnemyShips();
+    }
+
+    void OnActivate()
+    {
+        RaycastHit hit;
+        if (rightHand.GetComponent<XRRayInteractor>().TryGetCurrent3DRaycastHit(out hit))
+        {
+            string obj = hit.collider.gameObject.name;
+            print(obj);
+            if (obj.Equals("RotateBtn"))
+            {
+                RotateClicked();
+            }
+            else if (obj.Equals("NextBtn"))
+            {
+                NextShipClicked();
+            }
+            else if (obj.Equals("ReplayBtn"))
+            {
+                ReplayClicked();
+            }
+        }
     }
 
     private void NextShipClicked()
