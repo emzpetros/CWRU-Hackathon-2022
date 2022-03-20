@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit;
+using System.Text;
 
 public class GameManager : MonoBehaviour
 {
@@ -63,8 +64,8 @@ public class GameManager : MonoBehaviour
     private int HIT = 1;
     private int SUNK = 2;
 
-    private int PHYSICAL_WINS = 0;
-    private int VR_WINS = 1;
+    private int PHYSICAL_WINS = 1;
+    private int VR_WINS = 2;
 
     private int msgTypeInt;
     private int gamePhaseInt;
@@ -87,7 +88,13 @@ public class GameManager : MonoBehaviour
                     } while (receiveDat.Length < BYTE_ARRAY_LENGTH);
 
                     decodBytes(receiveDat);
-                    visualizeGuessResult();
+                    printMsg(receiveDat);
+                    
+                    if(msgTypeInt == INFO && guessedTile != null)
+                    {
+                        visualizeGuessResult();
+                    }
+                    
                 }
                 else
                 {
@@ -97,13 +104,32 @@ public class GameManager : MonoBehaviour
                         receiveDat = udp.receiveData();
                     } while (receiveDat.Length < BYTE_ARRAY_LENGTH);
                     decodBytes(receiveDat);
-                    enemyScript.NPCTurn(tileInt);
+                    printMsg(receiveDat);
+
+                    if(msgTypeInt == GUESS)
+                    {
+                        enemyScript.NPCTurn(tileInt);
+                    }
+                    
 
                 }
             }
-            
+            if (gamePhaseInt == VR_WINS)
+            {
+                GameOver("You WIN");
+            }
+            else if(gamePhaseInt == PHYSICAL_WINS)
+            {
+                GameOver("The enemy wins!");
+            }
+
         }
 
+    }
+
+    private void printMsg(byte[] data)
+    {
+        print("msgtype " + msgTypeInt+ "Win:  " + gamePhaseInt + " hit/miss/sunk " + hitMissInt + " tilenum " + tileInt);
     }
 
     private void visualizeGuessResult()
@@ -155,7 +181,6 @@ public class GameManager : MonoBehaviour
         if (rightHand.GetComponent<XRRayInteractor>().TryGetCurrent3DRaycastHit(out hit))
         {
             string obj = hit.collider.gameObject.name;
-            print(obj);
             if (obj.Equals("RotateBtn"))
             {
                 RotateClicked();
@@ -191,6 +216,7 @@ public class GameManager : MonoBehaviour
                 woodDock.SetActive(false);
                 topText.text = "Guess an enemy tile.";
                 setupComplete = true;
+                playerTurn = true;//added
                 for (int i = 0; i < ships.Length; i++) ships[i].SetActive(false);
             }
         }
@@ -203,7 +229,7 @@ public class GameManager : MonoBehaviour
         {
             Vector3 tilePos = tile.transform.position;
             tilePos.y += 15;
-            playerTurn = false;
+           // playerTurn = false;
             Instantiate(missilePrefab, tilePos, missilePrefab.transform.rotation);
         } else if (!setupComplete)
         {
@@ -228,6 +254,7 @@ public class GameManager : MonoBehaviour
     public void CheckHit(GameObject tile)
     {
         guessedTile = tile;
+        print("gueesed tile " + guessedTile.name);
         int tileNum = Int32.Parse(Regex.Match(tile.name, @"\d+").Value);
         /*int hitCount = 0;
         foreach(int[] tileNumArray in enemyShips)
@@ -283,6 +310,7 @@ public class GameManager : MonoBehaviour
 
         //UDP
         msgTypeByte = Convert.ToByte(GUESS);
+        Debug.Log("tile num to be stored" + tileNum);
         tileByte = Convert.ToByte(tileNum);
         
 
@@ -322,6 +350,8 @@ public class GameManager : MonoBehaviour
         //Send Guess to P2
         sendData = encodeBytes();
         udp.sendData(sendData);
+        print("sent");
+        printMsg(sendData);
 
 /*//Player 2 visualizes guess + makes their move
 
@@ -336,7 +366,7 @@ public class GameManager : MonoBehaviour
         //Takes the tile you are targeting: 0 is bottom left, count up to the right 
         enemyScript.NPCTurn(tileInt);*/
 
-
+        
         ColorAllTiles(0);
         if (playerShipCount < 1)
         {
@@ -367,7 +397,9 @@ public class GameManager : MonoBehaviour
         }
 
         //UDP
+        msgTypeByte = Convert.ToByte(INFO);
         udp.sendData(encodeBytes());
+        printMsg(encodeBytes());
         //playerTurn flag flipped so clicking on next tile starts the player turn 
     }
 
@@ -400,15 +432,35 @@ public class GameManager : MonoBehaviour
         data[1] = gamePhaseByte;
         data[2] = hitMissByte;
         data[3] = tileByte;
+
+
         return data;
     }
 
     private void decodBytes(byte[] input)
     {
-        msgTypeInt = Convert.ToInt32(input[0]);
-        gamePhaseInt = Convert.ToInt32(input[1]);
-        hitMissInt = Convert.ToInt32(input[2]);
-        tileInt = Convert.ToInt32(input[3]);
+
+        string receivedString = Encoding.ASCII.GetString(input);
+        //int inputInt = UInt32.Parse(receiveDat)
+        int inputInt = Int32.Parse(receivedString);
+        print("converted int  " + inputInt);
+
+        msgTypeInt = 2130706432 & inputInt; 
+        gamePhaseInt = 16711680 & inputInt;
+        hitMissInt = 65280 & inputInt;
+        tileInt =  255 & inputInt;
+
+        msgTypeInt = msgTypeInt >> 24;
+        gamePhaseInt = gamePhaseInt >> 16;
+        hitMissInt = hitMissInt >> 8;
+        /*gamePhaseInt = 00000000111111110000000000000000 & inputInt;
+        hitMissInt =   00000000000000001111111100000000 & inputInt;
+        tileInt =      00000000000000000000000011111111 & inputInt;*/
+
+        /*
+                gamePhaseInt = Convert.ToInt32(input[0]);
+                hitMissInt = Convert.ToInt32(input[1]);
+                tileInt = Convert.ToInt32(input[2]);*/
     }
 
     public void setHitMissBytes(int status)

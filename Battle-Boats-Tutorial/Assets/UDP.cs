@@ -47,9 +47,9 @@ public class UDP : MonoBehaviour
         }
 
 
-        byte[] sendBytes = Encoding.ASCII.GetBytes((count++).ToString());
+       /* byte[] sendBytes = Encoding.ASCII.GetBytes((count++).ToString());
         client.Send(sendBytes, sendBytes.Length);
-
+*/
     }
 
     public void sendData(byte[] sendBytes)

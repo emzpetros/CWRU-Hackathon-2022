@@ -120,7 +120,7 @@ public class EnemyScript : MonoBehaviour
             Debug.Log(" -########-- ");
             guess = nextIndex;
         }*/
-
+        
         GameObject tile = GameObject.Find("Tile (" + (guess + 1) + ")");
         guessGrid[guess] = 'm';
         Vector3 vec = tile.transform.position;
