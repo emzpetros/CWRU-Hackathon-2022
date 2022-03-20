@@ -16,7 +16,8 @@ public class UDP : MonoBehaviour
         client = new UdpClient(1234);
         try
         {
-            client.Connect("172.19.45.96", 1234);
+            client.Connect("172.19.32.111", 1234);
+            //client.Connect("172.19.45.96", 1234);
             byte[] sendBytes = Encoding.ASCII.GetBytes("Hello, from the client");
             client.Send(sendBytes, sendBytes.Length);
             IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 8888);

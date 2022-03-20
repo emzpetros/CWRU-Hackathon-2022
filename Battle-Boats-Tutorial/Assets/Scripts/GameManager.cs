@@ -88,6 +88,7 @@ public class GameManager : MonoBehaviour
                     } while (receiveDat.Length < BYTE_ARRAY_LENGTH);
 
                     decodBytes(receiveDat);
+                    print("Receive");
                     printMsg(receiveDat);
                     
                     if(msgTypeInt == INFO && guessedTile != null)
@@ -104,6 +105,7 @@ public class GameManager : MonoBehaviour
                         receiveDat = udp.receiveData();
                     } while (receiveDat.Length < BYTE_ARRAY_LENGTH);
                     decodBytes(receiveDat);
+                    print("Receive");
                     printMsg(receiveDat);
 
                     if(msgTypeInt == GUESS)
@@ -254,7 +256,6 @@ public class GameManager : MonoBehaviour
     public void CheckHit(GameObject tile)
     {
         guessedTile = tile;
-        print("gueesed tile " + guessedTile.name);
         int tileNum = Int32.Parse(Regex.Match(tile.name, @"\d+").Value);
         /*int hitCount = 0;
         foreach(int[] tileNumArray in enemyShips)
